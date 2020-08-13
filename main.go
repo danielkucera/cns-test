@@ -133,6 +133,32 @@ func main() {
 		panic(createVolumeOperationRes.Fault)
 	}
 	volumeId := createVolumeOperationRes.VolumeId.Id
-	fmt.Printf("Volume created sucessfully. volumeId: %s", volumeId)
+	fmt.Printf("\nVolume created sucessfully. volumeId: %s\n", volumeId)
+
+// Test DeleteVolume API
+	var volumeIDList []cnstypes.CnsVolumeId
+	volumeIDList = append(volumeIDList, cnstypes.CnsVolumeId{Id: volumeId})
+
+	fmt.Printf("Deleting volume: %+v\n", volumeIDList)
+	deleteTask, err := cnsClient.DeleteVolume(ctx, volumeIDList, true)
+	if err != nil {
+		panic(err)
+	}
+	deleteTaskInfo, err := cns.GetTaskInfo(ctx, deleteTask)
+	if err != nil {
+		panic(err)
+	}
+	deleteTaskResult, err := cns.GetTaskResult(ctx, deleteTaskInfo)
+	if err != nil {
+		panic(err)
+	}
+	if deleteTaskResult == nil {
+		panic("Empty delete task results")
+	}
+	deleteVolumeOperationRes := deleteTaskResult.GetCnsVolumeOperationResult()
+	if deleteVolumeOperationRes.Fault != nil {
+		fmt.Printf("Failed to delete volume: fault=%+v", deleteVolumeOperationRes.Fault)
+	}
+	fmt.Printf("Volume: %q deleted sucessfully\n", volumeId)
 
 }
