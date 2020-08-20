@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 
+	neturl "net/url"
+
 	"github.com/kr/pretty"
 
 	"github.com/vmware/govmomi/find"
@@ -41,6 +43,8 @@ func main() {
 	soapTraceDirectory := ".soap"
 
 	url := os.Getenv("CNS_VC_URL") // example: export CNS_VC_URL='https://username:password@vc-ip/sdk'
+	user := os.Getenv("CNS_VC_USER") 
+	pass := os.Getenv("CNS_VC_PASS") 
 	datacenter := os.Getenv("CNS_DATACENTER")
 	datastore := os.Getenv("CNS_DATASTORE")
 
@@ -51,6 +55,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	ui := neturl.UserPassword(user, pass)
+
+	u.User = ui 
 
 	if enableDebug == "true" {
 		if _, err := os.Stat(soapTraceDirectory); os.IsNotExist(err) {
@@ -91,7 +99,7 @@ func main() {
 	containerCluster := cnstypes.CnsContainerCluster{
 		ClusterType:   string(cnstypes.CnsClusterTypeKubernetes),
 		ClusterId:     "demo-cluster-id",
-		VSphereUser:   "Administrator@vsphere.local",
+		VSphereUser:   user,
 		ClusterFlavor: string(cnstypes.CnsClusterFlavorVanilla),
 	}
 	containerClusterArray = append(containerClusterArray, containerCluster)
