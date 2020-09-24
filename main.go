@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	neturl "net/url"
 
@@ -47,6 +48,8 @@ func main() {
 	pass := os.Getenv("CNS_VC_PASS") 
 	datacenter := os.Getenv("CNS_DATACENTER")
 	datastore := os.Getenv("CNS_DATASTORE")
+	action := os.Getenv("CNS_ACTION")
+	volumeId := os.Getenv("CNS_VOLUMEID")
 
 	if url == "" || datacenter == "" || datastore == "" {
 		panic("CNS_VC_URL or CNS_DATACENTER or CNS_DATASTORE is not set")
@@ -104,69 +107,73 @@ func main() {
 	}
 	containerClusterArray = append(containerClusterArray, containerCluster)
 
-	// Test CreateVolume API
-	var cnsVolumeCreateSpecList []cnstypes.CnsVolumeCreateSpec
-	cnsVolumeCreateSpec := cnstypes.CnsVolumeCreateSpec{
-		Name:       "pvc-901e87eb-c2bd-11e9-806f-005056a0c9a0",
-		VolumeType: string(cnstypes.CnsVolumeTypeBlock),
-		Datastores: dsList,
-		Metadata: cnstypes.CnsVolumeMetadata{
-			ContainerCluster: containerCluster,
-		},
-		BackingObjectDetails: &cnstypes.CnsBlockBackingDetails{
-			CnsBackingObjectDetails: cnstypes.CnsBackingObjectDetails{
-				CapacityInMb: 5120,
+	if strings.Contains(action, "CREATE") {
+
+		// Test CreateVolume API
+		var cnsVolumeCreateSpecList []cnstypes.CnsVolumeCreateSpec
+		cnsVolumeCreateSpec := cnstypes.CnsVolumeCreateSpec{
+			Name:       "pvc-901e87eb-c2bd-11e9-806f-005056a0c9a0",
+			VolumeType: string(cnstypes.CnsVolumeTypeBlock),
+			Datastores: dsList,
+			Metadata: cnstypes.CnsVolumeMetadata{
+				ContainerCluster: containerCluster,
 			},
-		},
+			BackingObjectDetails: &cnstypes.CnsBlockBackingDetails{
+				CnsBackingObjectDetails: cnstypes.CnsBackingObjectDetails{
+					CapacityInMb: 5120,
+				},
+			},
+		}
+		cnsVolumeCreateSpecList = append(cnsVolumeCreateSpecList, cnsVolumeCreateSpec)
+		fmt.Printf("Creating volume using the spec: %+v", pretty.Sprint(cnsVolumeCreateSpec))
+		createTask, err := cnsClient.CreateVolume(ctx, cnsVolumeCreateSpecList)
+		if err != nil {
+			panic(err)
+		}
+		createTaskInfo, err := cns.GetTaskInfo(ctx, createTask)
+		if err != nil {
+			panic(err)
+		}
+		createTaskResult, err := cns.GetTaskResult(ctx, createTaskInfo)
+		if err != nil {
+			panic(err)
+		}
+		if createTaskResult == nil {
+			panic("Empty create task results")
+		}
+		createVolumeOperationRes := createTaskResult.GetCnsVolumeOperationResult()
+		if createVolumeOperationRes.Fault != nil {
+			panic(createVolumeOperationRes.Fault)
+		}
+		volumeId = createVolumeOperationRes.VolumeId.Id
+		fmt.Printf("\nVolume created sucessfully. volumeId: %s\n", volumeId)
 	}
-	cnsVolumeCreateSpecList = append(cnsVolumeCreateSpecList, cnsVolumeCreateSpec)
-	fmt.Printf("Creating volume using the spec: %+v", pretty.Sprint(cnsVolumeCreateSpec))
-	createTask, err := cnsClient.CreateVolume(ctx, cnsVolumeCreateSpecList)
-	if err != nil {
-		panic(err)
-	}
-	createTaskInfo, err := cns.GetTaskInfo(ctx, createTask)
-	if err != nil {
-		panic(err)
-	}
-	createTaskResult, err := cns.GetTaskResult(ctx, createTaskInfo)
-	if err != nil {
-		panic(err)
-	}
-	if createTaskResult == nil {
-		panic("Empty create task results")
-	}
-	createVolumeOperationRes := createTaskResult.GetCnsVolumeOperationResult()
-	if createVolumeOperationRes.Fault != nil {
-		panic(createVolumeOperationRes.Fault)
-	}
-	volumeId := createVolumeOperationRes.VolumeId.Id
-	fmt.Printf("\nVolume created sucessfully. volumeId: %s\n", volumeId)
+	if strings.Contains(action, "DELETE") {
 
-// Test DeleteVolume API
-	var volumeIDList []cnstypes.CnsVolumeId
-	volumeIDList = append(volumeIDList, cnstypes.CnsVolumeId{Id: volumeId})
-
-	fmt.Printf("Deleting volume: %+v\n", volumeIDList)
-	deleteTask, err := cnsClient.DeleteVolume(ctx, volumeIDList, true)
-	if err != nil {
-		panic(err)
+		var volumeIDList []cnstypes.CnsVolumeId
+		volumeIDList = append(volumeIDList, cnstypes.CnsVolumeId{Id: volumeId})
+	
+		fmt.Printf("Deleting volume: %+v\n", volumeIDList)
+		deleteTask, err := cnsClient.DeleteVolume(ctx, volumeIDList, true)
+		if err != nil {
+			panic(err)
+		}
+		deleteTaskInfo, err := cns.GetTaskInfo(ctx, deleteTask)
+		if err != nil {
+			panic(err)
+		}
+		deleteTaskResult, err := cns.GetTaskResult(ctx, deleteTaskInfo)
+		if err != nil {
+			panic(err)
+		}
+		if deleteTaskResult == nil {
+			panic("Empty delete task results")
+		}
+		deleteVolumeOperationRes := deleteTaskResult.GetCnsVolumeOperationResult()
+		if deleteVolumeOperationRes.Fault != nil {
+			fmt.Printf("Failed to delete volume: fault=%+v", deleteVolumeOperationRes.Fault)
+		}
+		fmt.Printf("Volume: %q deleted sucessfully\n", volumeId)
 	}
-	deleteTaskInfo, err := cns.GetTaskInfo(ctx, deleteTask)
-	if err != nil {
-		panic(err)
-	}
-	deleteTaskResult, err := cns.GetTaskResult(ctx, deleteTaskInfo)
-	if err != nil {
-		panic(err)
-	}
-	if deleteTaskResult == nil {
-		panic("Empty delete task results")
-	}
-	deleteVolumeOperationRes := deleteTaskResult.GetCnsVolumeOperationResult()
-	if deleteVolumeOperationRes.Fault != nil {
-		fmt.Printf("Failed to delete volume: fault=%+v", deleteVolumeOperationRes.Fault)
-	}
-	fmt.Printf("Volume: %q deleted sucessfully\n", volumeId)
 
 }
