@@ -148,6 +148,18 @@ func main() {
 		volumeId = createVolumeOperationRes.VolumeId.Id
 		fmt.Printf("\nVolume created sucessfully. volumeId: %s\n", volumeId)
 	}
+	if strings.Contains(action, "QUERY") {
+	        var queryFilter cnstypes.CnsQueryFilter
+	        var volumeIDList []cnstypes.CnsVolumeId
+	        volumeIDList = append(volumeIDList, cnstypes.CnsVolumeId{Id: volumeId})
+	        queryFilter.VolumeIds = volumeIDList
+	        fmt.Printf("Calling QueryVolume using queryFilter: %+v", pretty.Sprint(queryFilter))
+	        queryResult, err := cnsClient.QueryVolume(ctx, queryFilter)
+	        if err != nil {
+	                fmt.Printf("Failed to query volume. Error: %+v \n", err)
+	        }
+	        fmt.Printf("Successfully Queried Volumes. queryResult: %+v", pretty.Sprint(queryResult))
+	}
 	if strings.Contains(action, "DELETE") {
 
 		var volumeIDList []cnstypes.CnsVolumeId
