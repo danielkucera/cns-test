@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"strconv"
 
 	neturl "net/url"
 
@@ -50,6 +51,11 @@ func main() {
 	datastore := os.Getenv("CNS_DATASTORE")
 	action := os.Getenv("CNS_ACTION")
 	volumeId := os.Getenv("CNS_VOLUMEID")
+	volumeSizeStr := os.Getenv("CNS_VOLUMESIZE")
+	volumeSize := 1024
+	if len(volumeSizeStr) > 0 {
+		volumeSize, _ = strconv.Atoi(volumeSizeStr)
+	}
 
 	if url == "" || datacenter == "" || datastore == "" {
 		panic("CNS_VC_URL or CNS_DATACENTER or CNS_DATASTORE is not set")
@@ -120,7 +126,7 @@ func main() {
 			},
 			BackingObjectDetails: &cnstypes.CnsBlockBackingDetails{
 				CnsBackingObjectDetails: cnstypes.CnsBackingObjectDetails{
-					CapacityInMb: 5120,
+					CapacityInMb: int64(volumeSize),
 				},
 			},
 		}
